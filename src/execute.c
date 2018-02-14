@@ -25,15 +25,12 @@
  ***************************************************************************/
 
 // Return a string containing the current working directory.
-char* get_current_directory(bool* should_free) {
-  // TODO: Get the current working directory. This will fix the prompt path.
-  // HINT: This should be pretty simple
-  IMPLEMENT_ME();
-
-  // Change this to true if necessary
-  *should_free = false;
-
-  return "get_current_directory()";
+char* get_current_directory() {
+	int size = 256;
+	char cwd[size];
+	getcwd(cwd, size);
+	char* cwdPointer = cwd;
+  return cwdPointer;
 }
 
 // Returns the value of an environment variable env_var

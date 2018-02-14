@@ -41,7 +41,7 @@ void write_env(const char* env_var, const char* val);
  *
  * @return A string representing the current working directory
  */
-char* get_current_directory(bool* should_free);
+char* get_current_directory();
 
 /**
  * @brief Check on background jobs to see if they have exited
