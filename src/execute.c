@@ -39,12 +39,11 @@ const char* lookup_env(const char* env_var) {
   // to interpret variables from the command line and display the prompt
   // correctly
   // HINT: This should be pretty simple
-  IMPLEMENT_ME();
 
   // TODO: Remove warning silencers
   (void) env_var; // Silence unused variable warning
 
-  return "???";
+  return getenv(env_var);
 }
 
 // Check the status of background jobs
@@ -109,8 +108,13 @@ void run_echo(EchoCommand cmd) {
   (void) str; // Silence unused variable warning
 
   // TODO: Implement echo
-  IMPLEMENT_ME();
-
+for(int i = 0; true; i++)
+{
+	if(str[i] == NULL)
+		break;
+	printf(str[i]);
+}
+printf("\n");
   // Flush the buffer before returning
   fflush(stdout);
 }
@@ -300,11 +304,24 @@ void create_process(CommandHolder holder) {
   (void) r_app; // Silence unused variable warning
 
   // TODO: Setup pipes, redirects, and new process
-  IMPLEMENT_ME();
-
-  //parent_run_command(holder.cmd); // This should be done in the parent branch of
-                                  // a fork
-  //child_run_command(holder.cmd); // This should be done in the child branch of a fork
+  pid_t pid_1;
+  int pipefd[2]; 
+  pipe(pipefd);
+  
+  if((pid_1 = fork()))
+  {
+	 dup2(pipefd[0], STDIN_FILENO);
+	 close(pipefd[1]);
+	  
+	parent_run_command(holder.cmd); // This should be done in the parent branch of
+  }
+  else                              // a fork
+  {
+	dup2(pipefd[1], STDOUT_FILENO);
+	close(pipefd[0]);
+	
+	child_run_command(holder.cmd); // This should be done in the child branch of a fork
+  }
 }
 
 // Run a list of commands
