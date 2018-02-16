@@ -10,7 +10,7 @@
 #include "execute.h"
 
 #include <stdio.h>
-
+#include <fcntl.h> // for open
 #include "quash.h"
 
 // Remove this and all expansion calls to it
@@ -278,19 +278,40 @@ void create_process(CommandHolder holder) {
   // TODO: Setup pipes, redirects, and new process
   pid_t pid_1;
   int pipefd[2]; 
-  pipe(pipefd);
+  if(p_in || p_out)
+	pipe(pipefd);
   
-  if((pid_1 = fork()))
+  if((pid_1 = fork())) //parent
   {
+	  if(p_in)
+	  {
 	 dup2(pipefd[0], STDIN_FILENO);
 	 close(pipefd[1]);
+	  }
 	  
 	parent_run_command(holder.cmd); // This should be done in the parent branch of
   }
   else                              // a fork
   {
+	if (r_in)
+    {
+        int fd0 = open(holder.redirect_in, O_RDONLY);
+        dup2(fd0, STDIN_FILENO);
+        close(fd0);
+    }
+
+    if (r_out)
+    {
+        int fd1 = creat(holder.redirect_out , O_CREAT) ;
+        dup2(fd1, STDOUT_FILENO);
+        close(fd1);
+    }
+	
+	if(p_out)
+	{
 	dup2(pipefd[1], STDOUT_FILENO);
 	close(pipefd[0]);
+	}
 	
 	child_run_command(holder.cmd); // This should be done in the child branch of a fork
   }

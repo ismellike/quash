@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 
+#include "deque.h"
 #include "command.h"
 
 /**
@@ -161,5 +162,9 @@ void run_jobs();
  * @sa Command
  */
 void run_script(CommandHolder* holders);
+
+IMPLEMENT_DEQUE_STRUCT(Job, pid_t) Job;
+
+PROTOTYPE_DEQUE(Job, pid_t);
 
 #endif
