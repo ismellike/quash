@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <fcntl.h> // for open
+#include <sys/wait.h>
 #include "quash.h"
 
 // Remove this and all expansion calls to it
@@ -22,6 +23,7 @@
   
 IMPLEMENT_DEQUE_STRUCT(PidDeque, pid_t);
 IMPLEMENT_DEQUE(PidDeque, pid_t);
+PidDeque pidDeque;
 
 typedef struct Job {
     int job_id;
@@ -35,6 +37,7 @@ IMPLEMENT_DEQUE(JobDeque, Job);
 //Declare queue of jobs
 JobDeque jobs;
 bool init = 1;
+int job_count = 0;
 
 /***************************************************************************
  * Interface Functions
@@ -339,6 +342,12 @@ void run_script(CommandHolder* holders) {
   if (holders == NULL)
     return;
 
+if(init){
+	jobs = new_JobDeque(1);
+	init=false;
+}
+	pidDeque = new_PidDeque(1);
+
   check_jobs_bg_status();
 
   if (get_command_holder_type(holders[0]) == EXIT &&
@@ -356,14 +365,21 @@ void run_script(CommandHolder* holders) {
   if (!(holders[0].flags & BACKGROUND)) {
     // Not a background Job
     // TODO: Wait for all processes under the job to complete
-    IMPLEMENT_ME();
+	while(!is_empty_PidDeque(&pidDeque))
+	{
+		int status;
+		waitpid(pop_front_PidDeque(&pidDeque), &status, 0);
+	}
   }
   else {
     // A background job.
     // TODO: Push the new job to the job queue
-    IMPLEMENT_ME();
+	struct Job new_job;
+	new_job.job_id = job_count;
+	new_job.pidDeque = pidDeque;
 
     // TODO: Once jobs are implemented, uncomment and fill the following line
     // print_job_bg_start(job_id, pid, cmd);
   }
+  destroy_PidDeque(&pidDeque);
 }
