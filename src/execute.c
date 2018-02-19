@@ -19,6 +19,22 @@
  */
 #define IMPLEMENT_ME()                                                  \
   fprintf(stderr, "IMPLEMENT ME: %s(line %d): %s()\n", __FILE__, __LINE__, __FUNCTION__)
+  
+IMPLEMENT_DEQUE_STRUCT(PidDeque, pid_t);
+IMPLEMENT_DEQUE(PidDeque, pid_t);
+
+typedef struct Job {
+    int job_id;
+    char* cmd;
+    PidDeque pidDeque;
+} Job;
+
+IMPLEMENT_DEQUE_STRUCT(JobDeque, Job);
+IMPLEMENT_DEQUE(JobDeque, Job);
+
+//Declare queue of jobs
+JobDeque jobs;
+bool init = 1;
 
 /***************************************************************************
  * Interface Functions
@@ -283,17 +299,7 @@ void create_process(CommandHolder holder) {
   
   if((pid_1 = fork())) //parent
   {
-	  if(p_in)
-	  {
-	 dup2(pipefd[0], STDIN_FILENO);
-	 close(pipefd[1]);
-	  }
-	  
-	parent_run_command(holder.cmd); // This should be done in the parent branch of
-  }
-  else                              // a fork
-  {
-	if (r_in)
+	 if (r_in)
     {
         int fd0 = open(holder.redirect_in, O_RDONLY);
         dup2(fd0, STDIN_FILENO);
@@ -306,6 +312,17 @@ void create_process(CommandHolder holder) {
         dup2(fd1, STDOUT_FILENO);
         close(fd1);
     }
+	
+	  if(p_in)
+	  {
+	 dup2(pipefd[0], STDIN_FILENO);
+	 close(pipefd[1]);
+	  }
+	  
+	parent_run_command(holder.cmd); // This should be done in the parent branch of
+  }
+  else                              // a fork
+  {
 	
 	if(p_out)
 	{
