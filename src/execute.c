@@ -206,7 +206,12 @@ void run_pwd() {
 // Prints all background jobs currently in the job list to stdout
 void run_jobs() {
   // TODO: Print background jobs
-  IMPLEMENT_ME();
+  for(int i = 0; i < length_JobDeque(&jobs); i++)
+  {
+	  Job job = pop_front_JobDeque(&jobs);
+	  print_job(job.job_id, peek_front_PidDeque(&job.pidDeque), job.cmd);
+	  push_back_JobDeque(&jobs, job);
+  }
 
   // Flush the buffer before returning
   fflush(stdout);
@@ -314,7 +319,7 @@ void parent_run_command(Command cmd) {
  *
  * @sa Command CommandHolder
  */
-void create_process(CommandHolder holder) {
+void create_process(CommandHolder holder, PidDeque* pidDeque) {
   // Read the flags field from the parser
   bool p_in  = holder.flags & PIPE_IN;
   bool p_out = holder.flags & PIPE_OUT;
@@ -324,14 +329,24 @@ void create_process(CommandHolder holder) {
                                                // is true
 
   // TODO: Setup pipes, redirects, and new process
-  pid_t pid_1;
+  pid_t pid;
   int pipefd[2]; 
-  if(p_in || p_out)
+  if(p_out)
 	pipe(pipefd);
   
-  if((pid_1 = fork())) //parent
+  if((pid = fork())) //parent
   {
-	 if (r_in)
+	 if(p_out)
+	{
+		close(pipefd[0]);
+	}
+	
+	push_back_PidDeque(pidDeque, pid);
+	parent_run_command(holder.cmd); // This should be done in the parent branch of
+  }
+  else                              // a fork
+  {
+		 if (r_in)
     {
         int fd0 = open(holder.redirect_in, O_RDONLY);
         dup2(fd0, STDIN_FILENO);
@@ -340,9 +355,18 @@ void create_process(CommandHolder holder) {
 
     if (r_out)
     {
+		if(r_app)
+		{
+		int fd1 = creat(holder.redirect_out , O_APPEND) ;
+        dup2(fd1, STDOUT_FILENO);
+        close(fd1);
+		}
+		else
+		{
         int fd1 = creat(holder.redirect_out , O_CREAT) ;
         dup2(fd1, STDOUT_FILENO);
         close(fd1);
+		}
     }
 	
 	  if(p_in)
@@ -350,18 +374,6 @@ void create_process(CommandHolder holder) {
 	 dup2(pipefd[0], STDIN_FILENO);
 	 close(pipefd[1]);
 	  }
-	  
-	parent_run_command(holder.cmd); // This should be done in the parent branch of
-  }
-  else                              // a fork
-  {
-	
-	if(p_out)
-	{
-	dup2(pipefd[1], STDOUT_FILENO);
-	close(pipefd[0]);
-	}
-	
 	child_run_command(holder.cmd); // This should be done in the child branch of a fork
   }
 }
@@ -393,7 +405,7 @@ if(init){
 
   // Run all commands in the `holder` array
   for (int i = 0; (type = get_command_holder_type(holders[i])) != EOC; ++i)
-    create_process(holders[i]);
+    create_process(holders[i], &new_job.pidDeque);
 
   if (!(holders[0].flags & BACKGROUND)) {
     // Not a background Job
