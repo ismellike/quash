@@ -23,7 +23,6 @@
   
 IMPLEMENT_DEQUE_STRUCT(PidDeque, pid_t);
 IMPLEMENT_DEQUE(PidDeque, pid_t);
-PidDeque pidDeque;
 
 typedef struct Job {
     int job_id;
@@ -37,7 +36,6 @@ IMPLEMENT_DEQUE(JobDeque, Job);
 //Declare queue of jobs
 JobDeque jobs;
 bool init = 1;
-int job_count = 0;
 
 /***************************************************************************
  * Interface Functions
@@ -67,10 +65,30 @@ void check_jobs_bg_status() {
   // TODO: Check on the statuses of all processes belonging to all background
   // jobs. This function should remove jobs from the jobs queue once all
   // processes belonging to a job have completed.
-  IMPLEMENT_ME();
-
-  // TODO: Once jobs are implemented, uncomment and fill the following line
-  // print_job_bg_complete(job_id, pid, cmd);
+  for(int i = 0; i< length_JobDeque(&jobs); i++)
+  {
+	  Job job = pop_front_JobDeque(&jobs);
+	  pid_t process = peek_front_PidDeque(&job.pidDeque);
+	  
+	  for(int j = 0; j < length_PidDeque(&job.pidDeque); j++)
+	  {
+		  pid_t pid = pop_front_PidDeque(&job.pidDeque);
+		  int status;
+		  if(!waitpid(pid, &status, 0))
+		  {
+			  push_back_PidDeque(&job.pidDeque, pid);
+		  }
+	  }
+	  
+	  if(is_empty_PidDeque(&job.pidDeque))
+	  {
+		  print_job_bg_complete(job.job_id, process, job.cmd);
+	  }
+	  else
+	  {
+		  push_back_JobDeque(&jobs, job);
+	  }
+  }
 }
 
 // Prints the job id number, the process id of the first process belonging to
@@ -148,12 +166,12 @@ void run_cd(CDCommand cmd) {
     return;
   }
 
-  // TODO: Change directory
-	chdir(dir);
   // TODO: Update the PWD environment variable to be the new current working
   // directory and optionally update OLD_PWD environment variable to be the old
   // working directory.
-  setenv(lookup_env("PATH"), dir, 1);
+  setenv("OLD_PWD", get_current_directory(), 1);
+  	chdir(dir);
+  setenv("PWD", dir, 1);
 }
 
 // Sends a signal to all processes contained in a job
@@ -161,7 +179,18 @@ void run_kill(KillCommand cmd) {
   int signal = cmd.sig;
   int job_id = cmd.job;
 
- 
+ for(int i = 0; i < length_JobDeque(&jobs); i++)
+ {
+	 Job job = pop_front_JobDeque(&jobs);
+	 if(job.job_id == job_id)
+	 {
+		 while(!is_empty_PidDeque(&job.pidDeque))
+		 {
+			 kill(pop_front_PidDeque(&job.pidDeque), signal);
+		 }
+	 }
+	 push_back_JobDeque(&jobs, job);
+ }
 }
 
 
@@ -169,7 +198,7 @@ void run_kill(KillCommand cmd) {
 void run_pwd() {
   // TODO: Print the current working directory
 	printf(get_current_directory());
-
+	printf("\n");
   // Flush the buffer before returning
   fflush(stdout);
 }
@@ -346,7 +375,6 @@ if(init){
 	jobs = new_JobDeque(1);
 	init=false;
 }
-	pidDeque = new_PidDeque(1);
 
   check_jobs_bg_status();
 
@@ -356,6 +384,11 @@ if(init){
     return;
   }
 
+  	Job new_job;
+	new_job.job_id = length_JobDeque(&jobs) + 1;
+	new_job.pidDeque = new_PidDeque(1);
+	new_job.cmd = get_command_string();
+  
   CommandType type;
 
   // Run all commands in the `holder` array
@@ -365,21 +398,20 @@ if(init){
   if (!(holders[0].flags & BACKGROUND)) {
     // Not a background Job
     // TODO: Wait for all processes under the job to complete
-	while(!is_empty_PidDeque(&pidDeque))
+	while(!is_empty_PidDeque(&new_job.pidDeque))
 	{
 		int status;
-		waitpid(pop_front_PidDeque(&pidDeque), &status, 0);
+		waitpid(pop_front_PidDeque(&new_job.pidDeque), &status, 0);
 	}
+	free(new_job.cmd);
+	  destroy_PidDeque(&new_job.pidDeque);
   }
   else {
     // A background job.
     // TODO: Push the new job to the job queue
-	struct Job new_job;
-	new_job.job_id = job_count;
-	new_job.pidDeque = pidDeque;
-
+	push_back_JobDeque(&jobs, new_job);
     // TODO: Once jobs are implemented, uncomment and fill the following line
-    // print_job_bg_start(job_id, pid, cmd);
+    print_job_bg_start(new_job.job_id, peek_front_PidDeque(&new_job.pidDeque), new_job.cmd);
+	
   }
-  destroy_PidDeque(&pidDeque);
 }
