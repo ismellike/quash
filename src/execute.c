@@ -36,7 +36,7 @@ IMPLEMENT_DEQUE(JobDeque, Job);
 //Declare queue of jobs
 JobDeque jobs;
 bool init = 1;
-
+int pipes[2][2];
 /***************************************************************************
  * Interface Functions
  ***************************************************************************/
@@ -170,6 +170,7 @@ void run_cd(CDCommand cmd) {
   // directory and optionally update OLD_PWD environment variable to be the old
   // working directory.
   setenv("OLD_PWD", get_current_directory(), 1);
+  printf(dir);
   	chdir(dir);
   setenv("PWD", dir, 1);
 }
@@ -330,7 +331,7 @@ void create_process(CommandHolder holder, PidDeque* pidDeque) {
 
   // TODO: Setup pipes, redirects, and new process
   pid_t pid;
-  int pipefd[2]; 
+  
   if(p_out)
 	pipe(pipefd);
   
@@ -346,7 +347,7 @@ void create_process(CommandHolder holder, PidDeque* pidDeque) {
   }
   else                              // a fork
   {
-		 if (r_in)
+	if (r_in)
     {
         int fd0 = open(holder.redirect_in, O_RDONLY);
         dup2(fd0, STDIN_FILENO);
