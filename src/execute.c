@@ -84,6 +84,8 @@ void check_jobs_bg_status() {
 	  if(is_empty_PidDeque(&job.pidDeque))
 	  {
 		  print_job_bg_complete(job.job_id, process, job.cmd);
+		  free(job.cmd);
+		  destroy_PidDeque(&job.pidDeque);
 	  }
 	  else
 	  {
@@ -344,30 +346,27 @@ void create_process(CommandHolder holder, int i, PidDeque* pidDeque) {
   {
 	  if (r_in)
     {
-        int fd0 = open(holder.redirect_in, O_RDONLY);
-        dup2(fd0, STDIN_FILENO);
-        close(fd0);
+        FILE* file = fopen(holder.redirect_in, "r");
+        dup2(fileno(file), STDIN_FILENO);
     }
 
     if (r_out)
     {
 		if(r_app)
 		{
-		int fd1 = creat(holder.redirect_out , O_APPEND) ;
-        dup2(fd1, STDOUT_FILENO);
-        close(fd1);
+		FILE* file = fopen(holder.redirect_out , "a") ;
+        dup2(fileno(file), STDOUT_FILENO);
 		}
 		else
 		{
-        int fd1 = creat(holder.redirect_out , O_CREAT) ;
-        dup2(fd1, STDOUT_FILENO);
-        close(fd1);
+        FILE* file = fopen(holder.redirect_out , "w") ;
+        dup2(fileno(file), STDOUT_FILENO);
 		}
     }
 	
 	  if(p_in)
 	  {
-	 dup2(read, STDIN_FILENO);
+	 dup2(pipes[read][0], STDIN_FILENO);
 	 close(pipes[read][0]);
 	  }
 	  if(p_out)
@@ -428,6 +427,7 @@ if(init){
 		waitpid(pid, &status, 0);
 	}
 	  destroy_PidDeque(&new_job.pidDeque);
+	  free(new_job.cmd);
   }
   else {
 	  job_id++;
