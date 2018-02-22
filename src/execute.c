@@ -37,6 +37,7 @@ IMPLEMENT_DEQUE(JobDeque, Job);
 JobDeque jobs;
 bool init = 1;
 int pipes[2][2];
+int read_end = 0;
 /***************************************************************************
  * Interface Functions
  ***************************************************************************/
@@ -123,7 +124,7 @@ void run_generic(GenericCommand cmd) {
   char** args = cmd.args;
 
   // TODO: Implement run generic
-  execv(exec, args);
+  execvp(exec, args);
 
   perror("ERROR: Failed to execute program");
 }
@@ -320,7 +321,7 @@ void parent_run_command(Command cmd) {
  *
  * @sa Command CommandHolder
  */
-void create_process(CommandHolder holder, PidDeque* pidDeque) {
+void create_process(CommandHolder holder, int i, PidDeque* pidDeque) {
   // Read the flags field from the parser
   bool p_in  = holder.flags & PIPE_IN;
   bool p_out = holder.flags & PIPE_OUT;
@@ -331,15 +332,17 @@ void create_process(CommandHolder holder, PidDeque* pidDeque) {
 
   // TODO: Setup pipes, redirects, and new process
   pid_t pid;
+  int write = i % 2;
+  int read = (i-1)%2;
   
   if(p_out)
-	pipe(pipefd);
+	pipe(pipes[write]);
   
   if((pid = fork())) //parent
   {
 	 if(p_out)
 	{
-		close(pipefd[0]);
+		close(pipes[write][1]);
 	}
 	
 	push_back_PidDeque(pidDeque, pid);
@@ -372,8 +375,13 @@ void create_process(CommandHolder holder, PidDeque* pidDeque) {
 	
 	  if(p_in)
 	  {
-	 dup2(pipefd[0], STDIN_FILENO);
-	 close(pipefd[1]);
+	 dup2(read, STDIN_FILENO);
+	 close(pipes[read][0]);
+	  }
+	  if(p_out)
+	  {
+		dup2(pipes[write][1], STDOUT_FILENO);
+		close(pipes[write][1]);
 	  }
 	child_run_command(holder.cmd); // This should be done in the child branch of a fork
   }
@@ -406,7 +414,7 @@ if(init){
 
   // Run all commands in the `holder` array
   for (int i = 0; (type = get_command_holder_type(holders[i])) != EOC; ++i)
-    create_process(holders[i], &new_job.pidDeque);
+    create_process(holders[i], i, &new_job.pidDeque);
 
   if (!(holders[0].flags & BACKGROUND)) {
     // Not a background Job

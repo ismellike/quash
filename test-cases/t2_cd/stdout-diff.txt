@@ -1,0 +1,6 @@
+0a1,5
+> dir3-1
+> dir3-2
+> valgrind_expected.txt
+> /cygdrive/c/Users/ismel/Desktop/quash/test-cases/t2_cd/sandbox/dir3
+> /cygdrive/c/Users/ismel/Desktop/quash/test-cases/t2_cd/sandbox/dir3
