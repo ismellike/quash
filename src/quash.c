@@ -38,8 +38,9 @@ static QuashState initial_state() {
 
 // Print a prompt for a command
 static void print_prompt() {
-  char* cwd = get_current_directory();
-
+	bool should_free = false;
+  char* cwd = get_current_directory(&should_free);
+  
   assert(cwd != NULL);
 
   char hostname[HOST_NAME_MAX];
@@ -67,7 +68,8 @@ static void print_prompt() {
 
   // print the prompt
   printf("[QUASH - %s@%s %s]$ ", username, hostname, last_dir);
-
+  if(should_free)
+	  free(cwd);
   fflush(stdout);
 }
 
